@@ -1,208 +1,177 @@
-// ===================== МЕНЮ =====================
+// Инициализация Telegram
+let tg = null;
+if (window.Telegram && window.Telegram.WebApp) {
+    tg = window.Telegram.WebApp;
+    tg.ready();
+    tg.expand();
+}
+
+// МЕНЮ
 const menuData = {
   "Супы": [
-    { name: "Суп-пюре сырный с копчеными колбасками", price: 3.80, desc: "Нежный сырный суп с ароматными колбасками 🔥" },
-    { name: "Холодник со сметаной", price: 3.00, desc: "Освежающий летний суп на кефире 🌿" }
+    { name: "Суп-пюре сырный с копчеными колбасками", price: 3.80 },
+    { name: "Холодник со сметаной", price: 3.00 }
   ],
   "Гарниры": [
-    { name: "Картофельное пюре", price: 2.50, desc: "Нежное, с маслом" },
-    { name: "Спагетти со сливочным соусом", price: 2.80, desc: "Паста аль денте" }
+    { name: "Картофельное пюре", price: 2.50 },
+    { name: "Спагетти со сливочным соусом", price: 2.80 }
   ],
   "Мясные блюда": [
-    { name: "Биточек из свинины", price: 6.60, desc: "Сочный, румяный 🔥" },
-    { name: "Филе запеченное по-французски", price: 6.70, desc: "Под сырной корочкой ⭐" },
-    { name: "Гнездышко с ветчиной и сыром", price: 6.80, desc: "Запеченное блюдо" },
-    { name: "Гуляш из свинины", price: 6.80, desc: "Тушеная свинина в подливе" }
+    { name: "Биточек из свинины", price: 6.60 },
+    { name: "Филе запеченное по-французски", price: 6.70 },
+    { name: "Гнездышко с ветчиной и сыром", price: 6.80 },
+    { name: "Гуляш из свинины", price: 6.80 }
   ],
   "Салаты": [
-    { name: "Летний", price: 3.20, desc: "Свежие овощи 🌿" },
-    { name: "Свежесть", price: 2.60, desc: "Капуста, огурец, зелень" }
+    { name: "Летний", price: 3.20 },
+    { name: "Свежесть", price: 2.60 }
   ],
   "Фитнес бокс": [
-    { name: "Фитнес бокс с курицей", price: 8.00, desc: "Сбалансированный обед" }
+    { name: "Фитнес бокс с курицей", price: 8.00 }
   ],
   "Пицца/Закуски": [
-    { name: "Пицца на тосте", price: 3.00, desc: "" },
-    { name: "Конвертик из лаваша", price: 4.00, desc: "" }
+    { name: "Пицца на тосте", price: 3.00 },
+    { name: "Конвертик из лаваша", price: 4.00 }
   ],
   "Хлеб": [
-    { name: "Хлеб/Батон", price: 0.30, desc: "" }
+    { name: "Хлеб/Батон", price: 0.30 }
   ],
   "Напитки": [
-    { name: "Сок в ассортименте", price: 1.50, desc: "" },
-    { name: "Кефир", price: 1.00, desc: "Полезный" }
+    { name: "Сок в ассортименте", price: 1.50 },
+    { name: "Кефир", price: 1.00 }
   ]
 };
 
-// Корзина: { "название": { price, quantity } }
 let cart = {};
 
-// Инициализация Telegram WebApp
-let tg = window.Telegram?.WebApp;
-
-if (tg) {
-  tg.ready();
-  tg.expand(); // Разворачиваем на весь экран
-}
-
-// ===================== ОТРИСОВКА МЕНЮ =====================
 function renderMenu() {
-  const menuContainer = document.getElementById('menu');
-  menuContainer.innerHTML = '';
+  const container = document.getElementById('menu');
+  if (!container) return;
+  container.innerHTML = '';
   
-  for (const [category, items] of Object.entries(menuData)) {
-    const categoryDiv = document.createElement('div');
-    categoryDiv.className = 'menu-category';
-    
-    const categoryTitle = document.createElement('div');
-    categoryTitle.className = 'category-title';
-    categoryTitle.textContent = category;
-    categoryDiv.appendChild(categoryTitle);
+  for (const [cat, items] of Object.entries(menuData)) {
+    const block = document.createElement('div');
+    block.className = 'menu-category';
+    block.innerHTML = `<div class="category-title">${cat}</div>`;
     
     for (const item of items) {
-      const itemDiv = document.createElement('div');
-      itemDiv.className = 'menu-item';
-      
-      const qty = cart[item.name]?.quantity || 0;
-      
-      itemDiv.innerHTML = `
-        <div class="item-info">
-          <div class="item-name">${item.name}</div>
-          <div class="item-desc">${item.desc || ''}</div>
-        </div>
-        <div class="item-price">${item.price.toFixed(2)}₽</div>
-        <div class="item-controls">
-          <button class="btn-minus" data-name="${item.name}" data-price="${item.price}">➖</button>
-          <span class="item-qty">${qty}</span>
-          <button class="btn-plus" data-name="${item.name}" data-price="${item.price}">➕</button>
+      const qty = cart[item.name]?.qty || 0;
+      block.innerHTML += `
+        <div class="menu-item">
+          <div class="item-info">
+            <div class="item-name">${item.name}</div>
+          </div>
+          <div class="item-price">${item.price.toFixed(2)}₽</div>
+          <div class="item-controls">
+            <button class="minus" data-name="${item.name}" data-price="${item.price}">➖</button>
+            <span class="item-qty">${qty}</span>
+            <button class="plus" data-name="${item.name}" data-price="${item.price}">➕</button>
+          </div>
         </div>
       `;
-      
-      categoryDiv.appendChild(itemDiv);
     }
-    
-    menuContainer.appendChild(categoryDiv);
+    container.appendChild(block);
   }
   
-  // Добавляем обработчики после отрисовки
-  document.querySelectorAll('.btn-plus').forEach(btn => {
-    btn.addEventListener('click', (e) => {
+  // Обработчики
+  document.querySelectorAll('.plus').forEach(btn => {
+    btn.onclick = () => {
       const name = btn.dataset.name;
       const price = parseFloat(btn.dataset.price);
-      addToCart(name, price);
-    });
+      if (cart[name]) cart[name].qty++;
+      else cart[name] = { price, qty: 1 };
+      renderMenu();
+      renderCart();
+      if (tg) tg.HapticFeedback.impactOccurred('light');
+    };
   });
   
-  document.querySelectorAll('.btn-minus').forEach(btn => {
-    btn.addEventListener('click', (e) => {
+  document.querySelectorAll('.minus').forEach(btn => {
+    btn.onclick = () => {
       const name = btn.dataset.name;
-      removeFromCart(name);
-    });
+      if (cart[name]) {
+        if (cart[name].qty > 1) cart[name].qty--;
+        else delete cart[name];
+        renderMenu();
+        renderCart();
+        if (tg) tg.HapticFeedback.impactOccurred('light');
+      }
+    };
   });
-}
-
-// ===================== КОРЗИНА =====================
-function addToCart(name, price) {
-  if (cart[name]) {
-    cart[name].quantity++;
-  } else {
-    cart[name] = { price, quantity: 1 };
-  }
-  renderCart();
-  renderMenu(); // обновляем кнопки с количеством
-  if (tg) tg.HapticFeedback.impactOccurred('light');
-}
-
-function removeFromCart(name) {
-  if (cart[name]) {
-    if (cart[name].quantity > 1) {
-      cart[name].quantity--;
-    } else {
-      delete cart[name];
-    }
-    renderCart();
-    renderMenu();
-    if (tg) tg.HapticFeedback.impactOccurred('light');
-  }
-}
-
-function getTotal() {
-  let total = 0;
-  for (const [name, data] of Object.entries(cart)) {
-    total += data.price * data.quantity;
-  }
-  return total;
 }
 
 function renderCart() {
-  const cartContainer = document.getElementById('cart');
+  const container = document.getElementById('cart');
   const totalSpan = document.getElementById('total');
+  if (!container || !totalSpan) return;
   
-  const cartItems = Object.entries(cart);
-  
-  if (cartItems.length === 0) {
-    cartContainer.innerHTML = '<p>✨ Корзина пуста</p>';
-    totalSpan.textContent = '0.00';
+  const items = Object.entries(cart);
+  if (items.length === 0) {
+    container.innerHTML = '<p>✨ Корзина пуста</p>';
+    totalSpan.innerText = '0.00';
     return;
   }
   
-  cartContainer.innerHTML = '';
-  for (const [name, data] of cartItems) {
-    const itemDiv = document.createElement('div');
-    itemDiv.className = 'cart-item';
-    itemDiv.innerHTML = `
-      <span class="cart-item-name">${name} x${data.quantity}</span>
-      <span class="cart-item-price">${(data.price * data.quantity).toFixed(2)}₽</span>
-      <button class="cart-item-remove" data-name="${name}">🗑</button>
+  let total = 0;
+  container.innerHTML = '';
+  for (const [name, data] of items) {
+    const sum = data.price * data.qty;
+    total += sum;
+    container.innerHTML += `
+      <div class="cart-item">
+        <span class="cart-item-name">${name} x${data.qty}</span>
+        <span class="cart-item-price">${sum.toFixed(2)}₽</span>
+        <button class="cart-remove" data-name="${name}">🗑</button>
+      </div>
     `;
-    cartContainer.appendChild(itemDiv);
   }
+  totalSpan.innerText = total.toFixed(2);
   
-  // Обработчики удаления из корзины
-  document.querySelectorAll('.cart-item-remove').forEach(btn => {
-    btn.addEventListener('click', () => {
+  document.querySelectorAll('.cart-remove').forEach(btn => {
+    btn.onclick = () => {
       delete cart[btn.dataset.name];
-      renderCart();
       renderMenu();
-    });
+      renderCart();
+    };
   });
-  
-  totalSpan.textContent = getTotal().toFixed(2);
 }
 
-// ===================== ОФОРМЛЕНИЕ ЗАКАЗА =====================
+// ОФОРМЛЕНИЕ
 function checkout() {
-  const cartItems = Object.entries(cart);
-  if (cartItems.length === 0) {
-    alert('🛒 Корзина пуста');
+  const items = Object.entries(cart);
+  if (items.length === 0) {
+    if (tg) tg.showAlert("Корзина пуста");
+    else alert("Корзина пуста");
     return;
   }
   
-  const total = getTotal();
-  let itemsText = '';
-  for (const [name, data] of cartItems) {
-    itemsText += `${name} x${data.quantity} = ${(data.price * data.quantity).toFixed(2)}₽\n`;
+  let total = 0;
+  let text = '';
+  for (const [name, data] of items) {
+    const sum = data.price * data.qty;
+    total += sum;
+    text += `${name} x${data.qty} = ${sum.toFixed(2)}₽\n`;
   }
   
-  const orderText = `🍽️ НОВЫЙ ЗАКАЗ!\n———————————\n${itemsText}———————————\n🍽️ К оплате: ${total.toFixed(2)}₽`;
+  const order = {
+    order: cart,
+    total: total.toFixed(2),
+    text: `🍽️ НОВЫЙ ЗАКАЗ!\n———————————\n${text}———————————\n🍽️ К оплате: ${total.toFixed(2)}₽`
+  };
   
-  // Отправляем заказ в Telegram бота
   if (tg) {
-    tg.sendData(JSON.stringify({
-      order: cart,
-      total: total.toFixed(2),
-      text: orderText
-    }));
-    tg.close();
+    tg.sendData(JSON.stringify(order));
+    tg.showAlert("✅ Заказ оформлен!");
+    setTimeout(() => tg.close(), 1000);
   } else {
-    // Для теста вне Telegram
-    alert('Заказ:\n\n' + orderText + '\n\n(В Telegram заказ уйдёт боту)');
+    alert("Заказ:\n" + order.text);
   }
 }
 
-// ===================== ИНИЦИАЛИЗАЦИЯ =====================
-renderMenu();
-renderCart();
-
-// Кнопка оформления
-document.getElementById('checkoutBtn').addEventListener('click', checkout);
+// ЗАПУСК
+document.addEventListener('DOMContentLoaded', () => {
+  renderMenu();
+  renderCart();
+  const btn = document.getElementById('checkoutBtn');
+  if (btn) btn.onclick = checkout;
+});
