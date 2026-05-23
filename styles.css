@@ -1,196 +1,236 @@
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
+// ===================== ИНИЦИАЛИЗАЦИЯ =====================
+let tg = null;
+
+// Проверяем, что мы в Telegram
+if (window.Telegram && window.Telegram.WebApp) {
+    tg = window.Telegram.WebApp;
+    tg.ready();
+    tg.expand();
+    console.log("✅ Telegram WebApp инициализирован");
+} else {
+    console.log("⚠️ Работаем вне Telegram");
 }
 
-body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-  background: #f5f5f5;
-  color: #333;
-  padding: 20px;
-  padding-bottom: 100px;
+// ===================== МЕНЮ =====================
+const menuData = {
+  "Супы": [
+    { name: "Суп-пюре сырный с копчеными колбасками", price: 3.80, desc: "Нежный сырный суп 🔥" },
+    { name: "Холодник со сметаной", price: 3.00, desc: "Освежающий летний суп 🌿" }
+  ],
+  "Гарниры": [
+    { name: "Картофельное пюре", price: 2.50, desc: "Нежное, с маслом" },
+    { name: "Спагетти со сливочным соусом", price: 2.80, desc: "Паста аль денте" }
+  ],
+  "Мясные блюда": [
+    { name: "Биточек из свинины", price: 6.60, desc: "Сочный, румяный 🔥" },
+    { name: "Филе запеченное по-французски", price: 6.70, desc: "Под сырной корочкой ⭐" },
+    { name: "Гнездышко с ветчиной и сыром", price: 6.80, desc: "Запеченное блюдо" },
+    { name: "Гуляш из свинины", price: 6.80, desc: "Тушеная свинина в подливе" }
+  ],
+  "Салаты": [
+    { name: "Летний", price: 3.20, desc: "Свежие овощи 🌿" },
+    { name: "Свежесть", price: 2.60, desc: "Капуста, огурец, зелень" }
+  ],
+  "Фитнес бокс": [
+    { name: "Фитнес бокс с курицей", price: 8.00, desc: "Сбалансированный обед" }
+  ],
+  "Пицца/Закуски": [
+    { name: "Пицца на тосте", price: 3.00, desc: "" },
+    { name: "Конвертик из лаваша", price: 4.00, desc: "" }
+  ],
+  "Хлеб": [
+    { name: "Хлеб/Батон", price: 0.30, desc: "" }
+  ],
+  "Напитки": [
+    { name: "Сок в ассортименте", price: 1.50, desc: "" },
+    { name: "Кефир", price: 1.00, desc: "Полезный" }
+  ]
+};
+
+// Корзина
+let cart = {};
+
+// ===================== ОТРИСОВКА МЕНЮ =====================
+function renderMenu() {
+  const menuContainer = document.getElementById('menu');
+  if (!menuContainer) return;
+  menuContainer.innerHTML = '';
+  
+  for (const [category, items] of Object.entries(menuData)) {
+    const categoryDiv = document.createElement('div');
+    categoryDiv.className = 'menu-category';
+    
+    const categoryTitle = document.createElement('div');
+    categoryTitle.className = 'category-title';
+    categoryTitle.textContent = category;
+    categoryDiv.appendChild(categoryTitle);
+    
+    for (const item of items) {
+      const itemDiv = document.createElement('div');
+      itemDiv.className = 'menu-item';
+      
+      const qty = cart[item.name]?.quantity || 0;
+      
+      itemDiv.innerHTML = `
+        <div class="item-info">
+          <div class="item-name">${item.name}</div>
+          <div class="item-desc">${item.desc || ''}</div>
+        </div>
+        <div class="item-price">${item.price.toFixed(2)}₽</div>
+        <div class="item-controls">
+          <button class="btn-minus" data-name="${item.name}" data-price="${item.price}">➖</button>
+          <span class="item-qty">${qty}</span>
+          <button class="btn-plus" data-name="${item.name}" data-price="${item.price}">➕</button>
+        </div>
+      `;
+      
+      categoryDiv.appendChild(itemDiv);
+    }
+    
+    menuContainer.appendChild(categoryDiv);
+  }
+  
+  // Добавляем обработчики
+  document.querySelectorAll('.btn-plus').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      const name = btn.dataset.name;
+      const price = parseFloat(btn.dataset.price);
+      addToCart(name, price);
+    });
+  });
+  
+  document.querySelectorAll('.btn-minus').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      const name = btn.dataset.name;
+      removeFromCart(name);
+    });
+  });
 }
 
-.container {
-  max-width: 600px;
-  margin: 0 auto;
+// ===================== КОРЗИНА =====================
+function addToCart(name, price) {
+  if (cart[name]) {
+    cart[name].quantity++;
+  } else {
+    cart[name] = { price: price, quantity: 1 };
+  }
+  renderCart();
+  renderMenu();
+  if (tg) tg.HapticFeedback.impactOccurred('light');
 }
 
-h1 {
-  font-size: 28px;
-  text-align: center;
-  margin-bottom: 20px;
-  color: #e67e22;
+function removeFromCart(name) {
+  if (cart[name]) {
+    if (cart[name].quantity > 1) {
+      cart[name].quantity--;
+    } else {
+      delete cart[name];
+    }
+    renderCart();
+    renderMenu();
+    if (tg) tg.HapticFeedback.impactOccurred('light');
+  }
 }
 
-h2 {
-  font-size: 22px;
-  margin-top: 30px;
-  margin-bottom: 15px;
-  color: #2c3e50;
-  border-bottom: 2px solid #e67e22;
-  padding-bottom: 5px;
+function getTotal() {
+  let total = 0;
+  for (const [name, data] of Object.entries(cart)) {
+    total += data.price * data.quantity;
+  }
+  return total;
 }
 
-.menu-category {
-  margin-bottom: 25px;
-  background: white;
-  border-radius: 16px;
-  padding: 15px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+function renderCart() {
+  const cartContainer = document.getElementById('cart');
+  const totalSpan = document.getElementById('total');
+  
+  if (!cartContainer || !totalSpan) return;
+  
+  const cartItems = Object.entries(cart);
+  
+  if (cartItems.length === 0) {
+    cartContainer.innerHTML = '<p>✨ Корзина пуста</p>';
+    totalSpan.textContent = '0.00';
+    return;
+  }
+  
+  cartContainer.innerHTML = '';
+  for (const [name, data] of cartItems) {
+    const itemDiv = document.createElement('div');
+    itemDiv.className = 'cart-item';
+    itemDiv.innerHTML = `
+      <span class="cart-item-name">${name} x${data.quantity}</span>
+      <span class="cart-item-price">${(data.price * data.quantity).toFixed(2)}₽</span>
+      <button class="cart-item-remove" data-name="${name}">🗑</button>
+    `;
+    cartContainer.appendChild(itemDiv);
+  }
+  
+  document.querySelectorAll('.cart-item-remove').forEach(btn => {
+    btn.addEventListener('click', () => {
+      delete cart[btn.dataset.name];
+      renderCart();
+      renderMenu();
+    });
+  });
+  
+  totalSpan.textContent = getTotal().toFixed(2);
 }
 
-.category-title {
-  font-size: 20px;
-  font-weight: bold;
-  margin-bottom: 12px;
-  color: #e67e22;
+// ===================== ОФОРМЛЕНИЕ ЗАКАЗА =====================
+function checkout() {
+  console.log("🔘 Кнопка оформления нажата");
+  
+  const cartItems = Object.entries(cart);
+  if (cartItems.length === 0) {
+    const msg = "🛒 Корзина пуста. Добавьте товары!";
+    if (tg) {
+      tg.showAlert(msg);
+    } else {
+      alert(msg);
+    }
+    return;
+  }
+  
+  const total = getTotal();
+  let itemsText = '';
+  for (const [name, data] of cartItems) {
+    itemsText += `${name} x${data.quantity} = ${(data.price * data.quantity).toFixed(2)}₽\n`;
+  }
+  
+  const orderData = {
+    order: cart,
+    total: total.toFixed(2),
+    text: `🍽️ НОВЫЙ ЗАКАЗ!\n———————————\n${itemsText}———————————\n🍽️ К оплате: ${total.toFixed(2)}₽`
+  };
+  
+  console.log("📦 Отправляем заказ:", orderData);
+  
+  if (tg) {
+    // Отправляем данные боту
+    tg.sendData(JSON.stringify(orderData));
+    tg.showAlert("✅ Заказ оформляется...");
+    
+    // Не закрываем сразу, даём время на отправку
+    setTimeout(() => {
+      tg.close();
+    }, 1500);
+  } else {
+    // Для теста в браузере
+    alert('Оформление заказа:\n\n' + orderData.text);
+  }
 }
 
-.menu-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 12px 0;
-  border-bottom: 1px solid #eee;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.menu-item:last-child {
-  border-bottom: none;
-}
-
-.item-info {
-  flex: 2;
-}
-
-.item-name {
-  font-weight: 600;
-  font-size: 16px;
-}
-
-.item-desc {
-  font-size: 12px;
-  color: #7f8c8d;
-  margin-top: 4px;
-}
-
-.item-price {
-  font-weight: bold;
-  color: #e67e22;
-  min-width: 60px;
-  text-align: right;
-}
-
-.item-controls {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  background: #f0f0f0;
-  padding: 5px 12px;
-  border-radius: 30px;
-}
-
-.item-controls button {
-  background: none;
-  border: none;
-  font-size: 20px;
-  font-weight: bold;
-  cursor: pointer;
-  color: #e67e22;
-  width: 30px;
-  height: 30px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.item-controls button:active {
-  background: #ddd;
-}
-
-.item-qty {
-  font-weight: bold;
-  min-width: 30px;
-  text-align: center;
-}
-
-.cart {
-  background: white;
-  border-radius: 16px;
-  padding: 15px;
-  margin-bottom: 15px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-  min-height: 100px;
-}
-
-.cart-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 8px 0;
-  border-bottom: 1px solid #eee;
-}
-
-.cart-item-name {
-  flex: 2;
-}
-
-.cart-item-price {
-  color: #e67e22;
-  min-width: 80px;
-  text-align: right;
-}
-
-.cart-item-remove {
-  background: none;
-  border: none;
-  color: #e74c3c;
-  font-size: 20px;
-  cursor: pointer;
-  margin-left: 10px;
-}
-
-.cart-footer {
-  background: white;
-  border-radius: 16px;
-  padding: 15px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  max-width: 600px;
-  margin: 0 auto;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.cart-footer p {
-  font-size: 18px;
-  font-weight: bold;
-}
-
-#total {
-  color: #e67e22;
-  font-size: 22px;
-}
-
-#checkoutBtn {
-  background: #e67e22;
-  color: white;
-  border: none;
-  padding: 12px 24px;
-  border-radius: 30px;
-  font-weight: bold;
-  font-size: 16px;
-  cursor: pointer;
-}
-
-#checkoutBtn:active {
-  background: #d35400;
-}
+// ===================== ПРИВЯЗКА КНОПКИ =====================
+document.addEventListener('DOMContentLoaded', () => {
+  renderMenu();
+  renderCart();
+  
+  const checkoutBtn = document.getElementById('checkoutBtn');
+  if (checkoutBtn) {
+    checkoutBtn.addEventListener('click', checkout);
+    console.log("✅ Кнопка оформления привязана");
+  } else {
+    console.log("❌ Кнопка оформления не найдена");
+  }
+});
