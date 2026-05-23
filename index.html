@@ -10,13 +10,12 @@
             margin: 0;
             padding: 0;
             box-sizing: border-box;
-            user-select: none;
         }
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
             background: #f5f5f5;
             padding: 16px;
-            padding-bottom: 90px;
+            padding-bottom: 100px;
             color: #1a1a1a;
         }
         .container {
@@ -88,7 +87,7 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            transition: background 0.1s ease;
+            transition: all 0.1s ease;
         }
         .item-controls button:active {
             background: rgba(0,0,0,0.1);
@@ -138,7 +137,6 @@
             border-top: 2px solid #e67e22;
             color: #e67e22;
         }
-        /* Стили для кнопок в корзине */
         .cart-remove-btn {
             background: none;
             border: none;
@@ -146,30 +144,9 @@
             cursor: pointer;
             padding: 5px 10px;
             border-radius: 8px;
-            transition: background 0.1s ease;
         }
         .cart-remove-btn:active {
-            background: rgba(231, 76, 60, 0.1);
-            transform: scale(0.95);
-        }
-        /* Отладочная панель (только для разработки) */
-        .debug-panel {
-            position: fixed;
-            bottom: 10px;
-            left: 10px;
-            background: rgba(0,0,0,0.7);
-            color: #0f0;
-            font-size: 10px;
-            padding: 4px 8px;
-            border-radius: 8px;
-            font-family: monospace;
-            z-index: 9999;
-            pointer-events: none;
-        }
-        @media (max-width: 768px) {
-            .debug-panel {
-                display: none;
-            }
+            opacity: 0.6;
         }
     </style>
 </head>
@@ -183,10 +160,9 @@
         <div class="total" id="totalAmount">💰 ИТОГО: 0.00 ₽</div>
     </div>
 </div>
-<div class="debug-panel" id="debugPanel">WebApp: Загрузка...</div>
 
 <script>
-    // ---- МЕНЮ ----
+    // ==================== МЕНЮ ====================
     const menu = {
         "Супы": [
             { name: "Суп-пюре сырный с копчеными колбасками", price: 3.80 },
@@ -222,28 +198,23 @@
     let cart = {};
     let tg = null;
 
-    // ---- Инициализация Telegram ----
-    try {
-        if (window.Telegram && window.Telegram.WebApp) {
-            tg = window.Telegram.WebApp;
-            tg.ready();
-            tg.expand();
-            
-            // Настраиваем MainButton (синюю кнопку Telegram)
-            tg.MainButton.setText("✅ ОФОРМИТЬ ЗАКАЗ");
-            tg.MainButton.onClick(sendOrder);
-            tg.MainButton.hide(); // Показываем только когда есть товары
-            
-            document.getElementById('debugPanel').innerHTML = 'WebApp: ✅ Telegram OK';
-        } else {
-            document.getElementById('debugPanel').innerHTML = 'WebApp: ⚠️ Режим браузера';
-        }
-    } catch(e) {
-        console.error('Telegram init error:', e);
-        document.getElementById('debugPanel').innerHTML = 'WebApp: ❌ Ошибка';
+    // ==================== ИНИЦИАЛИЗАЦИЯ TELEGRAM ====================
+    if (window.Telegram && window.Telegram.WebApp) {
+        tg = window.Telegram.WebApp;
+        tg.ready();
+        tg.expand();
+        
+        // Настраиваем синюю кнопку Telegram
+        tg.MainButton.setText("✅ ОФОРМИТЬ ЗАКАЗ");
+        tg.MainButton.onClick(sendOrder);
+        tg.MainButton.hide();
+        
+        console.log("✅ Telegram WebApp готов");
+    } else {
+        console.log("⚠️ Работа в браузере");
     }
 
-    // ---- Отрисовка меню ----
+    // ==================== ОТРИСОВКА МЕНЮ ====================
     function renderMenu() {
         const container = document.getElementById('menuList');
         if (!container) return;
@@ -271,7 +242,6 @@
             container.appendChild(catDiv);
         }
 
-        // Обработчики +/-
         document.querySelectorAll('.plus-btn').forEach(btn => {
             btn.onclick = (e) => {
                 e.stopPropagation();
@@ -280,7 +250,7 @@
                 if (cart[name]) {
                     cart[name].qty++;
                 } else {
-                    cart[name] = { price, qty: 1 };
+                    cart[name] = { price: price, qty: 1 };
                 }
                 refreshAll();
             };
@@ -302,7 +272,7 @@
         });
     }
 
-    // ---- Отрисовка корзины ----
+    // ==================== ОТРИСОВКА КОРЗИНЫ ====================
     function renderCart() {
         const cartDiv = document.getElementById('cartList');
         const totalDiv = document.getElementById('totalAmount');
@@ -311,7 +281,6 @@
         if (items.length === 0) {
             cartDiv.innerHTML = '<div class="cart-empty">✨ Корзина пуста</div>';
             totalDiv.innerHTML = '💰 ИТОГО: 0.00 ₽';
-            // Скрываем кнопку Telegram
             if (tg && tg.MainButton) {
                 tg.MainButton.hide();
             }
@@ -334,13 +303,11 @@
         cartDiv.innerHTML = html;
         totalDiv.innerHTML = `💰 ИТОГО: ${total.toFixed(2)} ₽`;
         
-        // Показываем кнопку Telegram с суммой
         if (tg && tg.MainButton) {
             tg.MainButton.setText(`✅ ОФОРМИТЬ | ${total.toFixed(2)} ₽`);
             tg.MainButton.show();
         }
         
-        // Обработчики удаления
         document.querySelectorAll('.cart-remove-btn').forEach(btn => {
             btn.onclick = (e) => {
                 e.stopPropagation();
@@ -350,39 +317,41 @@
         });
     }
 
-    // ---- Отправка заказа ----
+    // ==================== ОТПРАВКА ЗАКАЗА ====================
     function sendOrder() {
         const items = Object.entries(cart);
         
         if (items.length === 0) {
-            const msg = "🛒 Корзина пуста";
+            const msg = "🛒 Корзина пуста! Добавьте блюда в заказ.";
             if (tg) tg.showAlert(msg);
             else alert(msg);
             return;
         }
         
+        // ВАЖНО! Формируем данные в том формате, который ожидает бот
+        // Бот ожидает: { order: { "Название": { quantity: 1, price: 100 } }, total: 123 }
+        const orderData = {};
         let total = 0;
-        let text = '';
+        
         for (let [name, data] of items) {
-            const sum = data.price * data.qty;
-            total += sum;
-            text += `${name} × ${data.qty} = ${sum.toFixed(2)} ₽\n`;
+            orderData[name] = {
+                quantity: data.qty,
+                price: data.price
+            };
+            total += data.price * data.qty;
         }
         
-        const orderText = `🍽️ НОВЫЙ ЗАКАЗ!\n———————————\n${text}———————————\n💰 К оплате: ${total.toFixed(2)} ₽`;
-        
-        const order = {
-            cart: cart,
-            total: total.toFixed(2),
-            text: orderText
+        const payload = {
+            order: orderData,
+            total: total.toFixed(2)
         };
         
-        console.log('Отправка заказа:', order);
+        console.log("📦 Отправка заказа:", JSON.stringify(payload, null, 2));
         
-        // Отправляем в Telegram
         if (tg) {
             try {
-                tg.sendData(JSON.stringify(order));
+                // Отправляем данные боту
+                tg.sendData(JSON.stringify(payload));
                 tg.showAlert("✅ Заказ отправлен!");
                 
                 // Очищаем корзину
@@ -394,18 +363,23 @@
                     tg.close();
                 }, 1500);
             } catch(e) {
-                console.error('Ошибка отправки:', e);
+                console.error("❌ Ошибка отправки:", e);
                 tg.showAlert("❌ Ошибка отправки заказа");
             }
         } else {
-            // Режим браузера
-            alert("✅ Заказ отправлен!\n\n" + orderText);
+            // Режим браузера для тестирования
+            let text = "🍽️ ЗАКАЗ:\n";
+            for (let [name, data] of items) {
+                text += `${name} × ${data.qty} = ${(data.price * data.qty).toFixed(2)} ₽\n`;
+            }
+            text += `\n💰 ИТОГО: ${total.toFixed(2)} ₽`;
+            alert(text);
             cart = {};
             refreshAll();
         }
     }
 
-    // ---- Вспомогательная функция для безопасности ----
+    // ==================== ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ====================
     function escapeHtml(str) {
         if (!str) return '';
         return str.replace(/[&<>]/g, function(m) {
@@ -416,17 +390,14 @@
         });
     }
 
-    // ---- Полное обновление ----
     function refreshAll() {
         renderMenu();
         renderCart();
     }
 
-    // ---- Запуск ----
+    // ==================== ЗАПУСК ====================
     refreshAll();
-    
-    // Логируем для отладки
-    console.log('Приложение запущено', { tg: !!tg });
+    console.log("✅ Приложение запущено");
 </script>
 </body>
 </html>
