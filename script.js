@@ -1,30 +1,19 @@
-// ===================== НАСТОЯЩЕЕ TELEGRAM MINI APP =====================
-
-// Инициализация
-let tg = window.Telegram?.WebApp;
+// Инициализация Telegram Mini App
+let tg = null;
 let user = null;
 
-if (tg) {
-    tg.ready();                     // Сообщаем Telegram, что приложение загружено
-    tg.expand();                    // Разворачиваем на весь экран
-    tg.enableClosingConfirmation(); // Спрашиваем подтверждение при закрытии
-    
-    // Получаем данные пользователя (ВОТ ЭТО ГЛАВНОЕ!)
+if (window.Telegram && window.Telegram.WebApp) {
+    tg = window.Telegram.WebApp;
+    tg.ready();
+    tg.expand();
     user = tg.initDataUnsafe?.user;
+    console.log("✅ Telegram Mini App загружен");
     if (user) {
-        console.log(`👤 Пользователь: ${user.first_name} ${user.last_name || ''} (@${user.username || 'нет'}) ID: ${user.id}`);
-    } else {
-        console.log("👤 Гость (вне Telegram)");
+        console.log(`Пользователь: ${user.first_name} (ID: ${user.id})`);
     }
-    
-    // Включаем тактильную обратную связь
-    tg.HapticFeedback.impactOccurred('light');
-    
-} else {
-    console.log("⚠️ Приложение открыто вне Telegram");
 }
 
-// ===================== МЕНЮ =====================
+// МЕНЮ
 const menuData = {
   "🍜 СУПЫ": [
     { name: "Суп-пюре сырный с копчеными колбасками", price: 3.80 },
@@ -62,7 +51,6 @@ const menuData = {
 
 let cart = {};
 
-// ===================== ОТРИСОВКА =====================
 function renderMenu() {
   const container = document.getElementById('menu');
   if (!container) return;
@@ -92,7 +80,6 @@ function renderMenu() {
     container.appendChild(block);
   }
   
-  // Обработчики с вибрацией
   document.querySelectorAll('.plus').forEach(btn => {
     btn.onclick = () => {
       const name = btn.dataset.name;
@@ -101,7 +88,6 @@ function renderMenu() {
       else cart[name] = { price, qty: 1 };
       renderMenu();
       renderCart();
-      updateMainButton();
       if (tg) tg.HapticFeedback.impactOccurred('light');
     };
   });
@@ -114,7 +100,6 @@ function renderMenu() {
         else delete cart[name];
         renderMenu();
         renderCart();
-        updateMainButton();
         if (tg) tg.HapticFeedback.impactOccurred('light');
       }
     };
@@ -153,39 +138,15 @@ function renderCart() {
       delete cart[btn.dataset.name];
       renderMenu();
       renderCart();
-      updateMainButton();
-      if (tg) tg.HapticFeedback.impactOccurred('light');
     };
   });
 }
 
-// ===================== ГЛАВНАЯ КНОПКА TELEGRAM =====================
-function updateMainButton() {
-  if (!tg) return;
-  
-  const items = Object.entries(cart);
-  if (items.length === 0) {
-    tg.MainButton.hide();
-  } else {
-    const total = items.reduce((sum, [_, data]) => sum + (data.price * data.qty), 0);
-    tg.MainButton.setText(`✅ ОФОРМИТЬ ЗАКАЗ | ${total.toFixed(2)}₽`);
-    tg.MainButton.show();
-  }
-}
-
-// ===================== ОФОРМЛЕНИЕ ЗАКАЗА =====================
 function checkout() {
   const items = Object.entries(cart);
   if (items.length === 0) {
-    if (tg) {
-      tg.showPopup({
-        title: "🛒 Корзина пуста",
-        message: "Добавьте товары перед оформлением заказа",
-        buttons: [{ type: "ok" }]
-      });
-    } else {
-      alert("Корзина пуста");
-    }
+    if (tg) tg.showAlert("🛒 Корзина пуста");
+    else alert("Корзина пуста");
     return;
   }
   
@@ -197,60 +158,29 @@ function checkout() {
     text += `${name} x${data.qty} = ${sum.toFixed(2)}₽\n`;
   }
   
-  // Добавляем информацию о пользователе (если есть)
-  let userInfo = '';
-  if (user) {
-    userInfo = `👤 ${user.first_name} ${user.last_name || ''} (@${user.username || 'нет'})`;
-  }
-  
   const order = {
     order: cart,
     total: total.toFixed(2),
-    text: `🍽️ НОВЫЙ ЗАКАЗ!\n———————————\n${text}———————————\n🍽️ К оплате: ${total.toFixed(2)}₽\n${userInfo}`
+    text: `🍽️ НОВЫЙ ЗАКАЗ!\n———————————\n${text}———————————\n🍽️ К оплате: ${total.toFixed(2)}₽`
   };
   
   if (tg) {
-    // Отправляем заказ боту
     tg.sendData(JSON.stringify(order));
-    
-    // Показываем нативный попап
-    tg.showPopup({
-      title: "✅ ЗАКАЗ ОФОРМЛЕН!",
-      message: `Сумма: ${total.toFixed(2)}₽\n\nСпасибо за заказ!`,
-      buttons: [{ type: "ok" }]
-    });
-    
-    // Закрываем приложение через 1.5 секунды
-    setTimeout(() => tg.close(), 1500);
+    tg.showAlert("✅ Заказ оформлен!");
+    setTimeout(() => tg.close(), 1000);
   } else {
     alert("Заказ:\n" + order.text);
   }
 }
 
-// ===================== ЗАПУСК =====================
+// ЗАПУСК
 document.addEventListener('DOMContentLoaded', () => {
   renderMenu();
   renderCart();
   
-  // Настраиваем главную кнопку Telegram
-  if (tg) {
-    tg.MainButton.setText("ОФОРМИТЬ ЗАКАЗ");
-    tg.MainButton.onClick(checkout);
-    updateMainButton();
-    
-    // Приветственный попап с именем пользователя
-    if (user) {
-      setTimeout(() => {
-        tg.showPopup({
-          title: "🍽️ Добро пожаловать!",
-          message: `${user.first_name}, выбирайте блюда и оформляйте заказ.`,
-          buttons: [{ type: "ok" }]
-        });
-      }, 500);
-    }
+  const btn = document.getElementById('checkoutBtn');
+  if (btn) {
+    btn.onclick = checkout;
+    console.log("✅ Кнопка привязана");
   }
-  
-  // Для обратной совместимости с HTML-кнопкой (если есть)
-  const oldBtn = document.getElementById('checkoutBtn');
-  if (oldBtn) oldBtn.style.display = 'none';
 });
