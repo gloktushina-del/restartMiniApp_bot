@@ -1,49 +1,37 @@
-// Инициализация Telegram Mini App
-let tg = null;
-let user = null;
+// Самый простой и надёжный код для Mini App
+let tg = window.Telegram?.WebApp;
 
-if (window.Telegram && window.Telegram.WebApp) {
-    tg = window.Telegram.WebApp;
-    tg.ready();
-    tg.expand();
-    user = tg.initDataUnsafe?.user;
-    console.log("✅ Telegram Mini App загружен");
-    if (user) {
-        console.log(`Пользователь: ${user.first_name} (ID: ${user.id})`);
-    }
-}
-
-// МЕНЮ
+// Данные меню (скопировано из вашей таблицы)
 const menuData = {
-  "🍜 СУПЫ": [
+  "Супы": [
     { name: "Суп-пюре сырный с копчеными колбасками", price: 3.80 },
     { name: "Холодник со сметаной", price: 3.00 }
   ],
-  "🍚 ГАРНИРЫ": [
+  "Гарниры": [
     { name: "Картофельное пюре", price: 2.50 },
     { name: "Спагетти со сливочным соусом", price: 2.80 }
   ],
-  "🍖 МЯСНЫЕ БЛЮДА": [
+  "Мясные блюда": [
     { name: "Биточек из свинины", price: 6.60 },
     { name: "Филе запеченное по-французски", price: 6.70 },
     { name: "Гнездышко с ветчиной и сыром", price: 6.80 },
     { name: "Гуляш из свинины", price: 6.80 }
   ],
-  "🥗 САЛАТЫ": [
+  "Салаты": [
     { name: "Летний", price: 3.20 },
     { name: "Свежесть", price: 2.60 }
   ],
-  "🥙 ФИТНЕС БОКС": [
+  "Фитнес бокс": [
     { name: "Фитнес бокс с курицей", price: 8.00 }
   ],
-  "🍕 ПИЦЦА/ЗАКУСКИ": [
+  "Закуски": [
     { name: "Пицца на тосте", price: 3.00 },
     { name: "Конвертик из лаваша", price: 4.00 }
   ],
-  "🍞 ХЛЕБ": [
+  "Хлеб": [
     { name: "Хлеб/Батон", price: 0.30 }
   ],
-  "🥤 НАПИТКИ": [
+  "Напитки": [
     { name: "Сок в ассортименте", price: 1.50 },
     { name: "Кефир", price: 1.00 }
   ]
@@ -51,136 +39,171 @@ const menuData = {
 
 let cart = {};
 
-function renderMenu() {
-  const container = document.getElementById('menu');
-  if (!container) return;
-  container.innerHTML = '';
+// Функция для отображения меню
+function showMenu() {
+  const menuDiv = document.getElementById('menu');
+  if (!menuDiv) return;
   
-  for (const [cat, items] of Object.entries(menuData)) {
-    const block = document.createElement('div');
-    block.className = 'menu-category';
-    block.innerHTML = `<div class="category-title">${cat}</div>`;
+  menuDiv.innerHTML = '';
+  
+  for (let category in menuData) {
+    // Создаём блок категории
+    const categoryDiv = document.createElement('div');
+    categoryDiv.className = 'menu-category';
+    categoryDiv.innerHTML = `<div class="category-title">🍽️ ${category}</div>`;
     
-    for (const item of items) {
-      const qty = cart[item.name]?.qty || 0;
-      block.innerHTML += `
-        <div class="menu-item">
-          <div class="item-info">
-            <div class="item-name">${item.name}</div>
-          </div>
-          <div class="item-price">${item.price.toFixed(2)}₽</div>
-          <div class="item-controls">
-            <button class="minus" data-name="${item.name}" data-price="${item.price}">➖</button>
-            <span class="item-qty">${qty}</span>
-            <button class="plus" data-name="${item.name}" data-price="${item.price}">➕</button>
-          </div>
+    const items = menuData[category];
+    for (let item of items) {
+      const qty = cart[item.name] ? cart[item.name].qty : 0;
+      
+      // Создаём строку товара
+      const itemRow = document.createElement('div');
+      itemRow.className = 'menu-item';
+      itemRow.innerHTML = `
+        <span class="item-name">${item.name}</span>
+        <span class="item-price">${item.price.toFixed(2)} ₽</span>
+        <div class="item-controls">
+          <button class="btn-minus" data-name="${item.name}" data-price="${item.price}">-</button>
+          <span class="item-qty">${qty}</span>
+          <button class="btn-plus" data-name="${item.name}" data-price="${item.price}">+</button>
         </div>
       `;
+      categoryDiv.appendChild(itemRow);
     }
-    container.appendChild(block);
+    menuDiv.appendChild(categoryDiv);
   }
   
-  document.querySelectorAll('.plus').forEach(btn => {
+  // Добавляем обработчики для всех кнопок
+  document.querySelectorAll('.btn-plus').forEach(btn => {
     btn.onclick = () => {
       const name = btn.dataset.name;
       const price = parseFloat(btn.dataset.price);
       if (cart[name]) cart[name].qty++;
-      else cart[name] = { price, qty: 1 };
-      renderMenu();
-      renderCart();
-      if (tg) tg.HapticFeedback.impactOccurred('light');
+      else cart[name] = { price: price, qty: 1 };
+      showMenu();  // Перерисовываем
+      showCart();  // Перерисовываем корзину
+      updateCheckoutButton();
     };
   });
   
-  document.querySelectorAll('.minus').forEach(btn => {
+  document.querySelectorAll('.btn-minus').forEach(btn => {
     btn.onclick = () => {
       const name = btn.dataset.name;
       if (cart[name]) {
         if (cart[name].qty > 1) cart[name].qty--;
         else delete cart[name];
-        renderMenu();
-        renderCart();
-        if (tg) tg.HapticFeedback.impactOccurred('light');
+        showMenu();
+        showCart();
+        updateCheckoutButton();
       }
     };
   });
 }
 
-function renderCart() {
-  const container = document.getElementById('cart');
-  const totalSpan = document.getElementById('total');
-  if (!container || !totalSpan) return;
+// Функция для отображения корзины
+function showCart() {
+  const cartDiv = document.getElementById('cart');
+  if (!cartDiv) return;
   
   const items = Object.entries(cart);
   if (items.length === 0) {
-    container.innerHTML = '<p>✨ Корзина пуста</p>';
-    totalSpan.innerText = '0.00';
+    cartDiv.innerHTML = '<p>✨ Корзина пуста</p>';
+    document.getElementById('total').innerText = '0.00';
     return;
   }
   
   let total = 0;
-  container.innerHTML = '';
-  for (const [name, data] of items) {
+  let html = '';
+  for (let [name, data] of items) {
     const sum = data.price * data.qty;
     total += sum;
-    container.innerHTML += `
+    html += `
       <div class="cart-item">
-        <span class="cart-item-name">${name} x${data.qty}</span>
-        <span class="cart-item-price">${sum.toFixed(2)}₽</span>
+        <span>${name} x${data.qty}</span>
+        <span>${sum.toFixed(2)} ₽</span>
         <button class="cart-remove" data-name="${name}">🗑</button>
       </div>
     `;
   }
-  totalSpan.innerText = total.toFixed(2);
+  cartDiv.innerHTML = html;
+  document.getElementById('total').innerText = total.toFixed(2);
   
+  // Обработчики для кнопок удаления из корзины
   document.querySelectorAll('.cart-remove').forEach(btn => {
     btn.onclick = () => {
       delete cart[btn.dataset.name];
-      renderMenu();
-      renderCart();
+      showMenu();
+      showCart();
+      updateCheckoutButton();
     };
   });
 }
 
-function checkout() {
+// Управление главной кнопкой Telegram
+function updateCheckoutButton() {
+  if (!tg) return;
   const items = Object.entries(cart);
   if (items.length === 0) {
-    if (tg) tg.showAlert("🛒 Корзина пуста");
-    else alert("Корзина пуста");
+    tg.MainButton.hide();
+  } else {
+    const total = items.reduce((sum, [_, data]) => sum + (data.price * data.qty), 0);
+    tg.MainButton.setText(`Оформить заказ | ${total.toFixed(2)} ₽`);
+    tg.MainButton.show();
+  }
+}
+
+// Отправка заказа
+function sendOrder() {
+  const items = Object.entries(cart);
+  if (items.length === 0) {
+    if (tg) tg.showAlert("Корзина пуста");
     return;
   }
   
   let total = 0;
   let text = '';
-  for (const [name, data] of items) {
+  for (let [name, data] of items) {
     const sum = data.price * data.qty;
     total += sum;
-    text += `${name} x${data.qty} = ${sum.toFixed(2)}₽\n`;
+    text += `${name} x${data.qty} = ${sum.toFixed(2)} ₽\n`;
   }
   
   const order = {
     order: cart,
     total: total.toFixed(2),
-    text: `🍽️ НОВЫЙ ЗАКАЗ!\n———————————\n${text}———————————\n🍽️ К оплате: ${total.toFixed(2)}₽`
+    text: `🍽️ НОВЫЙ ЗАКАЗ!\n${text}\n🍽️ К оплате: ${total.toFixed(2)} ₽`
   };
   
   if (tg) {
     tg.sendData(JSON.stringify(order));
-    tg.showAlert("✅ Заказ оформлен!");
-    setTimeout(() => tg.close(), 1000);
-  } else {
-    alert("Заказ:\n" + order.text);
+    tg.showAlert("✅ Заказ отправлен!");
+    cart = {};
+    showMenu();
+    showCart();
+    updateCheckoutButton();
+    tg.close();
   }
 }
 
-// ЗАПУСК
+// Запуск при загрузке страницы
 document.addEventListener('DOMContentLoaded', () => {
-  renderMenu();
-  renderCart();
-  
-  const btn = document.getElementById('checkoutBtn');
-  if (btn) {
-    btn.onclick = checkout;
-    console.log("✅ Кнопка привязана");
+  // Находим контейнеры
+  const mainDiv = document.getElementById('menu');
+  if (!mainDiv) {
+    console.error("Ошибка: не найден контейнер #menu");
+    return;
   }
+  
+  // Инициализация Telegram
+  if (tg) {
+    tg.ready();
+    tg.expand();
+    tg.MainButton.setText("Оформить заказ");
+    tg.MainButton.onClick(sendOrder);
+    tg.MainButton.hide();
+  }
+  
+  // Показываем меню
+  showMenu();
+  showCart();
 });
