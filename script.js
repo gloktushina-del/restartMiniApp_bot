@@ -1,42 +1,60 @@
-// Инициализация Telegram
-let tg = null;
-if (window.Telegram && window.Telegram.WebApp) {
-    tg = window.Telegram.WebApp;
-    tg.ready();
-    tg.expand();
+// ===================== НАСТОЯЩЕЕ TELEGRAM MINI APP =====================
+
+// Инициализация
+let tg = window.Telegram?.WebApp;
+let user = null;
+
+if (tg) {
+    tg.ready();                     // Сообщаем Telegram, что приложение загружено
+    tg.expand();                    // Разворачиваем на весь экран
+    tg.enableClosingConfirmation(); // Спрашиваем подтверждение при закрытии
+    
+    // Получаем данные пользователя (ВОТ ЭТО ГЛАВНОЕ!)
+    user = tg.initDataUnsafe?.user;
+    if (user) {
+        console.log(`👤 Пользователь: ${user.first_name} ${user.last_name || ''} (@${user.username || 'нет'}) ID: ${user.id}`);
+    } else {
+        console.log("👤 Гость (вне Telegram)");
+    }
+    
+    // Включаем тактильную обратную связь
+    tg.HapticFeedback.impactOccurred('light');
+    
+} else {
+    console.log("⚠️ Приложение открыто вне Telegram");
 }
 
-// МЕНЮ
+// ===================== МЕНЮ =====================
 const menuData = {
-  "Супы": [
+  "🍜 СУПЫ": [
     { name: "Суп-пюре сырный с копчеными колбасками", price: 3.80 },
     { name: "Холодник со сметаной", price: 3.00 }
   ],
-  "Гарниры": [
+  "🍚 ГАРНИРЫ": [
     { name: "Картофельное пюре", price: 2.50 },
     { name: "Спагетти со сливочным соусом", price: 2.80 }
   ],
-  "Мясные блюда": [
+  "🍖 МЯСНЫЕ БЛЮДА": [
     { name: "Биточек из свинины", price: 6.60 },
     { name: "Филе запеченное по-французски", price: 6.70 },
     { name: "Гнездышко с ветчиной и сыром", price: 6.80 },
     { name: "Гуляш из свинины", price: 6.80 }
   ],
-  "Салаты": [
+  "🥗 САЛАТЫ": [
     { name: "Летний", price: 3.20 },
     { name: "Свежесть", price: 2.60 }
   ],
-  "Фитнес бокс": [
+  "🥙 ФИТНЕС БОКС": [
     { name: "Фитнес бокс с курицей", price: 8.00 }
   ],
-  "Пицца/Закуски": [
+  "🍕 ПИЦЦА/ЗАКУСКИ": [
     { name: "Пицца на тосте", price: 3.00 },
     { name: "Конвертик из лаваша", price: 4.00 }
   ],
-  "Хлеб": [
+  "🍞 ХЛЕБ": [
     { name: "Хлеб/Батон", price: 0.30 }
   ],
-  "Напитки": [
+  "🥤 НАПИТКИ": [
     { name: "Сок в ассортименте", price: 1.50 },
     { name: "Кефир", price: 1.00 }
   ]
@@ -44,6 +62,7 @@ const menuData = {
 
 let cart = {};
 
+// ===================== ОТРИСОВКА =====================
 function renderMenu() {
   const container = document.getElementById('menu');
   if (!container) return;
@@ -73,7 +92,7 @@ function renderMenu() {
     container.appendChild(block);
   }
   
-  // Обработчики
+  // Обработчики с вибрацией
   document.querySelectorAll('.plus').forEach(btn => {
     btn.onclick = () => {
       const name = btn.dataset.name;
@@ -82,6 +101,7 @@ function renderMenu() {
       else cart[name] = { price, qty: 1 };
       renderMenu();
       renderCart();
+      updateMainButton();
       if (tg) tg.HapticFeedback.impactOccurred('light');
     };
   });
@@ -94,6 +114,7 @@ function renderMenu() {
         else delete cart[name];
         renderMenu();
         renderCart();
+        updateMainButton();
         if (tg) tg.HapticFeedback.impactOccurred('light');
       }
     };
@@ -132,16 +153,39 @@ function renderCart() {
       delete cart[btn.dataset.name];
       renderMenu();
       renderCart();
+      updateMainButton();
+      if (tg) tg.HapticFeedback.impactOccurred('light');
     };
   });
 }
 
-// ОФОРМЛЕНИЕ
+// ===================== ГЛАВНАЯ КНОПКА TELEGRAM =====================
+function updateMainButton() {
+  if (!tg) return;
+  
+  const items = Object.entries(cart);
+  if (items.length === 0) {
+    tg.MainButton.hide();
+  } else {
+    const total = items.reduce((sum, [_, data]) => sum + (data.price * data.qty), 0);
+    tg.MainButton.setText(`✅ ОФОРМИТЬ ЗАКАЗ | ${total.toFixed(2)}₽`);
+    tg.MainButton.show();
+  }
+}
+
+// ===================== ОФОРМЛЕНИЕ ЗАКАЗА =====================
 function checkout() {
   const items = Object.entries(cart);
   if (items.length === 0) {
-    if (tg) tg.showAlert("Корзина пуста");
-    else alert("Корзина пуста");
+    if (tg) {
+      tg.showPopup({
+        title: "🛒 Корзина пуста",
+        message: "Добавьте товары перед оформлением заказа",
+        buttons: [{ type: "ok" }]
+      });
+    } else {
+      alert("Корзина пуста");
+    }
     return;
   }
   
@@ -153,25 +197,60 @@ function checkout() {
     text += `${name} x${data.qty} = ${sum.toFixed(2)}₽\n`;
   }
   
+  // Добавляем информацию о пользователе (если есть)
+  let userInfo = '';
+  if (user) {
+    userInfo = `👤 ${user.first_name} ${user.last_name || ''} (@${user.username || 'нет'})`;
+  }
+  
   const order = {
     order: cart,
     total: total.toFixed(2),
-    text: `🍽️ НОВЫЙ ЗАКАЗ!\n———————————\n${text}———————————\n🍽️ К оплате: ${total.toFixed(2)}₽`
+    text: `🍽️ НОВЫЙ ЗАКАЗ!\n———————————\n${text}———————————\n🍽️ К оплате: ${total.toFixed(2)}₽\n${userInfo}`
   };
   
   if (tg) {
+    // Отправляем заказ боту
     tg.sendData(JSON.stringify(order));
-    tg.showAlert("✅ Заказ оформлен!");
-    setTimeout(() => tg.close(), 1000);
+    
+    // Показываем нативный попап
+    tg.showPopup({
+      title: "✅ ЗАКАЗ ОФОРМЛЕН!",
+      message: `Сумма: ${total.toFixed(2)}₽\n\nСпасибо за заказ!`,
+      buttons: [{ type: "ok" }]
+    });
+    
+    // Закрываем приложение через 1.5 секунды
+    setTimeout(() => tg.close(), 1500);
   } else {
     alert("Заказ:\n" + order.text);
   }
 }
 
-// ЗАПУСК
+// ===================== ЗАПУСК =====================
 document.addEventListener('DOMContentLoaded', () => {
   renderMenu();
   renderCart();
-  const btn = document.getElementById('checkoutBtn');
-  if (btn) btn.onclick = checkout;
+  
+  // Настраиваем главную кнопку Telegram
+  if (tg) {
+    tg.MainButton.setText("ОФОРМИТЬ ЗАКАЗ");
+    tg.MainButton.onClick(checkout);
+    updateMainButton();
+    
+    // Приветственный попап с именем пользователя
+    if (user) {
+      setTimeout(() => {
+        tg.showPopup({
+          title: "🍽️ Добро пожаловать!",
+          message: `${user.first_name}, выбирайте блюда и оформляйте заказ.`,
+          buttons: [{ type: "ok" }]
+        });
+      }, 500);
+    }
+  }
+  
+  // Для обратной совместимости с HTML-кнопкой (если есть)
+  const oldBtn = document.getElementById('checkoutBtn');
+  if (oldBtn) oldBtn.style.display = 'none';
 });
